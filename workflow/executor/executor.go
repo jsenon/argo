@@ -922,11 +922,14 @@ func (we *WorkflowExecutor) Wait() error {
 
 // waitMainContainerStart waits for the main container to start and returns its container ID.
 func (we *WorkflowExecutor) waitMainContainerStart() (string, error) {
+	var timeoutSecond int64 = 300
+
 	for {
 		podsIf := we.ClientSet.CoreV1().Pods(we.Namespace)
 		fieldSelector := fields.ParseSelectorOrDie(fmt.Sprintf("metadata.name=%s", we.PodName))
 		opts := metav1.ListOptions{
 			FieldSelector: fieldSelector.String(),
+			TimeoutSeconds: &timeoutSecond,
 		}
 		watchIf, err := podsIf.Watch(opts)
 		if err != nil {
