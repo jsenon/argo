@@ -924,16 +924,26 @@ func (we *WorkflowExecutor) Wait() error {
 func (we *WorkflowExecutor) waitMainContainerStart() (string, error) {
 	var timeoutSecond int64 = 300
 
+	var watchIf watch.Interface
+
+	var err error
+
 	for {
 		podsIf := we.ClientSet.CoreV1().Pods(we.Namespace)
 		fieldSelector := fields.ParseSelectorOrDie(fmt.Sprintf("metadata.name=%s", we.PodName))
 		opts := metav1.ListOptions{
-			FieldSelector: fieldSelector.String(),
+			FieldSelector:  fieldSelector.String(),
 			TimeoutSeconds: &timeoutSecond,
 		}
-		watchIf, err := podsIf.Watch(opts)
+		log.Infof("Try to start watching")
+		watchIf, err = podsIf.Watch(opts)
 		if err != nil {
-			return "", errors.InternalWrapErrorf(err, "Failed to establish pod watch: %v", err)
+			log.Warnf("Error starting watching, retrying: %v", err)
+			watchIf, err = podsIf.Watch(opts)
+			if err != nil {
+				log.Warnf("Error retry watching: %v", err)
+				return "", errors.InternalWrapErrorf(err, "Failed to establish pod watch: %v", err)
+			}
 		}
 		for watchEv := range watchIf.ResultChan() {
 			if watchEv.Type == watch.Error {

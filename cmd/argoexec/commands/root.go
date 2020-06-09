@@ -60,7 +60,7 @@ func NewRootCommand() *cobra.Command {
 
 	clientConfig = kubecli.AddKubectlFlagsToCmd(&command)
 	command.PersistentFlags().StringVar(&podAnnotationsPath, "pod-annotations", common.PodMetadataAnnotationsPath, "Pod annotations file from k8s downward API")
-	command.PersistentFlags().StringVar(&logLevel, "loglevel", "info", "Set the logging level. One of: debug|info|warn|error")
+	command.PersistentFlags().StringVar(&logLevel, "loglevel", "debug", "Set the logging level. One of: debug|info|warn|error")
 	command.PersistentFlags().IntVar(&glogLevel, "gloglevel", 0, "Set the glog logging level")
 
 	return &command
