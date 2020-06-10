@@ -924,10 +924,6 @@ func (we *WorkflowExecutor) Wait() error {
 func (we *WorkflowExecutor) waitMainContainerStart() (string, error) {
 	var timeoutSecond int64 = 300
 
-	var watchIf watch.Interface
-
-	var err error
-
 	for {
 		podsIf := we.ClientSet.CoreV1().Pods(we.Namespace)
 		fieldSelector := fields.ParseSelectorOrDie(fmt.Sprintf("metadata.name=%s", we.PodName))
@@ -936,15 +932,24 @@ func (we *WorkflowExecutor) waitMainContainerStart() (string, error) {
 			TimeoutSeconds: &timeoutSecond,
 		}
 		log.Infof("Try to start watching")
-		watchIf, err = podsIf.Watch(opts)
-		if err != nil {
-			log.Warnf("Error starting watching, retrying: %v", err)
+
+		var err error
+		var watchIf watch.Interface
+
+		err = wait.ExponentialBackoff(retry.DefaultRetry, func() (bool, error) {
 			watchIf, err = podsIf.Watch(opts)
 			if err != nil {
-				log.Warnf("Error retry watching: %v", err)
-				return "", errors.InternalWrapErrorf(err, "Failed to establish pod watch: %v", err)
+				log.Debugf("Error retry watching: %v", err)
+				return false, nil
 			}
+			return true, nil
+		})
+
+		if err != nil {
+			log.Warnf("Error retry watching: %v", err)
+			return "", errors.InternalWrapErrorf(err, "Failed to establish pod watch: %v", err)
 		}
+
 		for watchEv := range watchIf.ResultChan() {
 			if watchEv.Type == watch.Error {
 				return "", errors.InternalErrorf("Pod watch error waiting for main to start: %v", watchEv.Object)
